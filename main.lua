@@ -1,25 +1,19 @@
+-- Lista de jogos suportados (GameId principal)
 local supported = {
-    9872472334, -- adicione mais IDs aqui
-    1234567890,
+    [9872472334] = true, -- Jogo 1
+    [1234567890] = true, -- Jogo 2
 }
 
-local id = game.GameId
 local ms = game:GetService("MarketplaceService")
-
-local function isSupported(id)
-    for _, v in ipairs(supported) do
-        if v == id then
-            return true
-        end
-    end
-    return false
-end
-
 local ok, info = pcall(function()
     return ms:GetProductInfo(game.PlaceId)
 end)
 
-if isSupported(id) then
+-- Usa GameId (principal) para checar compatibilidade
+local gameId = game.GameId
+local isSupported = supported[gameId]
+
+if isSupported then
     local name = ok and info.Name or "Unknown Game"
     WindUI:Notify({
         Title = "Game detected",
