@@ -22,7 +22,7 @@ if isSupported then
     })
 else
     WindUI:Notify({
-        Title = "Game not supported",
+        Title = "Game not supported (buggy)",
         Desc = "This game is not compatible.",
         Icon = "x"
     })
