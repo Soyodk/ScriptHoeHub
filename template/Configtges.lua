@@ -7,7 +7,7 @@ local ThemeSection = Tabs.Settings:Section({
 
 local success, themeList = pcall(function()
     return loadstring(game:HttpGet(
-        "https://raw.githubusercontent.com/SEU_USUARIO/MellowHub-Themes/main/themes.lua"
+        "https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/refs/heads/main/Uilibray/78themes.lua"
     ))()
 end)
 
