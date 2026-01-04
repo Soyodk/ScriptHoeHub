@@ -1,12 +1,12 @@
 
 	--BUTTONS KEYBIND
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/Top%20bar%20app%20Button%20Frame.lua'))()
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/evade%20leaderboard%20button.lua'))()
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/Reload%20and%20Front%20View%20button.lua'))()
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/Evade%20Zoom%20Button.lua'))()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/f10353f78a666ff14d1981ce00a7ffb8f15418cb/Script/evade/Scripthub/Darahub/Top%20bar%20app%20Button%20Frame.lua'))()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/f10353f78a666ff14d1981ce00a7ffb8f15418cb/Script/evade/Scripthub/Darahub/evade%20leaderboard%20button.lua'))()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/f10353f78a666ff14d1981ce00a7ffb8f15418cb/Script/evade/Scripthub/Darahub/Reload%20and%20Front%20View%20button.lua'))()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/f10353f78a666ff14d1981ce00a7ffb8f15418cb/Script/evade/Scripthub/Darahub/Evade%20Zoom%20Button.lua'))()
 -- loadstring(game:HttpGet('https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/Padding%20space%20detector.lua'))()
 -- Timer Loadstring
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/TimerGUI-NoRepeat'))()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/refs/heads/main/Script/evade/Scripthub/Darahub/TimerGUI-NoRepeat'))()
 --filename "TimerGUI" code inside:
 --[[
 local Players = game:GetService("Players")
@@ -193,36 +193,7 @@ roundTimer:GetAttributeChangedSignal("About"):Connect(updateUIVisibility)
 
 
 
--- keysystem.lua 
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Create%20Loadstring%20file.lua",true))()
--- filename "You already have it lol" code:
---[[local validLoadstring = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/main-loader.lua"))()'
-local CONFIG_FILE_NAME = "DaraHubBigThxForSupport.lua"
-
-local function saveFileContent(content)
-    local success, errorMsg = pcall(function()
-        if writefile then
-            writefile(CONFIG_FILE_NAME, content)
-            return true
-        end
-        return false
-    end)
-    return success, errorMsg
-end
-local function autoSaveConfig()
-    local success, errorMsg = saveFileContent(validLoadstring)
-    if not success then
-        warn("Failed to auto-save config: " .. tostring(errorMsg))
-    end
-end
-
-autoSaveConfig()
-]]
---no way you falling for that 💀
-
-
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Pnsdgsa/Script-kids/refs/heads/main/Scripthub/Darahub/evade/macro%20vip%20command.lua'))()
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/refs/heads/main/Script/evade/Scripthub/Darahub/macro%20vip%20command.lua'))()
 
 
 
