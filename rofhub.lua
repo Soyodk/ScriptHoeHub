@@ -183,13 +183,13 @@ WindUI:SetTheme("GlassPurple")
 
 local Window = WindUI:CreateWindow({
 
-    Title = "loc:SCRIPT_TITLE",
+    Title = "Script Clear",
 
-    Icon = "rbxassetid://78004090758063",
+    Icon = "door-open",
 
-    Author = "loc:WELCOME",
+    Author = "By Ruap",
 
-    Folder = "Ziox-Hub",
+    Folder = "ScriptClear",
 
     Size = UDim2.fromOffset(720, 560),
 
@@ -219,7 +219,7 @@ local Window = WindUI:CreateWindow({
 
     OpenButton = {
         Enabled = true,
-        Title = "loc:SCRIPT_TITLE",
+        Title = "Script Clear",
         CornerRadius = UDim.new(1, 0),
         Scale = 0.6,
     },
@@ -4159,9 +4159,47 @@ end
 
 -- automoneyfarm
 
+local function getOrCreateSecurityPart()
+
+    local sp = workspace:FindFirstChild("SecurityPart")
+
+    if sp then return sp end
+
+    sp = workspace:FindFirstChild("ScriptClearSafePlate")
+
+    if not sp then
+
+        sp = Instance.new("Part")
+
+        sp.Name = "ScriptClearSafePlate"
+
+        sp.Anchored = true
+
+        sp.CanCollide = true
+
+        sp.Size = Vector3.new(60, 1, 60)
+
+        sp.Transparency = 0.6
+
+        sp.Material = Enum.Material.ForceField
+
+        sp.Color = Color3.fromRGB(170, 85, 255)
+
+        sp.CFrame = CFrame.new(0, 10000, 0)
+
+        sp.Parent = workspace
+
+    end
+
+    return sp
+
+end
+
+
+
 local function startAutoMoneyFarm()
 
-    local securityPart = workspace:FindFirstChild("SecurityPart")
+    local securityPart = getOrCreateSecurityPart()
 
     if not securityPart then
 
