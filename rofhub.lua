@@ -197,7 +197,7 @@ local Window = WindUI:CreateWindow({
 
     MaxSize = Vector2.new(1200, 800),
 
-    UIScale = 1.25,
+    UIScale = 1.53,
 
     ToggleKey = Enum.KeyCode.RightShift,
 
@@ -221,7 +221,7 @@ local Window = WindUI:CreateWindow({
 
     OpenButton = {
         Enabled = true,
-        Title = "Script Clear",
+        Title = "Katu Hub",
         CornerRadius = UDim.new(1, 0),
         Scale = 0.6,
     },
@@ -284,15 +284,6 @@ Window:Tag({
     Color = Color3.fromRGB(48, 255, 106)
 
 })
-
-Window:Tag({
-
-    Title = "GLASS",
-
-    Color = Color3.fromRGB(170, 85, 255)
-
-})
-
 
 
 
