@@ -1,29 +1,44 @@
--- Lista de jogos suportados (GameId principal)
+-- Evade Loader (Clean English Version)
+
 local supported = {
-    [9872472334] = true, -- Jogo 1
-    [1234567890] = true, -- Jogo 2
+    [9872472334] = true,  -- Evade
 }
 
 local ms = game:GetService("MarketplaceService")
+local gameId = game.GameId
+local placeId = game.PlaceId
+
 local ok, info = pcall(function()
-    return ms:GetProductInfo(game.PlaceId)
+    return ms:GetProductInfo(placeId)
 end)
 
--- Usa GameId (principal) para checar compatibilidade
-local gameId = game.GameId
-local isSupported = supported[gameId]
+local gameName = ok and info.Name or "Unknown Game"
 
-if isSupported then
-    local name = ok and info.Name or "Unknown Game"
+if supported[gameId] then
     WindUI:Notify({
-        Title = "Game detected",
-        Desc = "Supported game: " .. name,
+        Title = "Game Detected",
+        Desc = "Supported game: " .. gameName .. "\nLoading script...",
         Icon = "check"
     })
+    
+    task.spawn(function()
+        local success, err = pcall(function()
+            -- Load the Evade script
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/refs/heads/main/Script/evade2.lua"))()
+        end)
+        
+        if not success then
+            WindUI:Notify({
+                Title = "Load Error",
+                Desc = err or "Unknown error occurred",
+                Icon = "x"
+            })
+        end
+    end)
 else
     WindUI:Notify({
-        Title = "Game not supported (buggy)",
-        Desc = "This game is not compatible.",
+        Title = "Game Not Supported",
+        Desc = "This game is not compatible.\nGameId: " .. gameId,
         Icon = "x"
     })
 end
