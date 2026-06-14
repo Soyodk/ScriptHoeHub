@@ -28,7 +28,7 @@ do
 
     else 
 
-        WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+        WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
     end
 
@@ -179,43 +179,6 @@ WindUI:SetTheme("GlassPurple")
 
 
 
--- Roblox ImageLabel.Image can't load raw http(s) URLs; download + convert to a usable asset
-local function toRobloxImage(url)
-
-    if typeof(url) ~= "string" then return url end
-
-    if url:match("^rbxassetid://") or url:match("^rbxasset://") or url:match("^rbxthumb://") then
-
-        return url
-
-    end
-
-    if not url:match("^https?://") then return url end
-
-    local writeFn = writefile or (syn and syn.write_file)
-
-    local assetFn = getcustomasset or getsynasset or (syn and syn.get_custom_asset)
-
-    if not (writeFn and assetFn) then return url end
-
-    local ok, data = pcall(function() return game:HttpGet(url) end)
-
-    if not ok or type(data) ~= "string" or #data == 0 then return url end
-
-    local fileName = "ScriptClear_bg.jpg"
-
-    if not pcall(writeFn, fileName, data) then return url end
-
-    local okA, asset = pcall(assetFn, fileName)
-
-    if okA and type(asset) == "string" then return asset end
-
-    return url
-
-end
-
-
-
 -- Create WindUI window
 
 local Window = WindUI:CreateWindow({
@@ -252,7 +215,7 @@ local Window = WindUI:CreateWindow({
 
     ScrollBarEnabled = true,
 
-    Background = toRobloxImage("https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/refs/heads/main/mysterious-forest-night-pine-flashlightlong-600nw-2117650202.jpg"),
+    Background = "https://raw.githubusercontent.com/Soyodk/ScriptHoeHub/refs/heads/main/mysterious-forest-night-pine-flashlightlong-600nw-2117650202.jpg",
 
     OpenButton = {
         Enabled = true,
