@@ -191,7 +191,7 @@ local Window = WindUI:CreateWindow({
 
     Folder = "ScriptClear",
 
-    Size = UDim2.fromOffset(720, 560),
+    Size = UDim2.fromOffset(800, 620),
 
     MinSize = Vector2.new(500, 350),
 
@@ -205,7 +205,7 @@ local Window = WindUI:CreateWindow({
 
     Resizable = true,
 
-    SideBarWidth = 220,
+    SideBarWidth = 240,
 
     BackgroundImageTransparency = 0.42,
 
@@ -4213,29 +4213,45 @@ local function startAutoMoneyFarm()
 
     AutoMoneyFarmConnection = RunService.Heartbeat:Connect(function()
 
-        if character and rootPart then
+        local lp = Players.LocalPlayer
 
-            local downedPlayerFound = false
+        local char = lp and lp.Character
 
-            local playersInGame = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
 
-            if playersInGame then
+        if not hrp then return end
 
-                for _, v in pairs(playersInGame:GetChildren()) do
+        local sp = getOrCreateSecurityPart()
 
-                    if v:IsA("Model") and v:GetAttribute("Downed") then
+        if not sp then return end
 
-                        if v:FindFirstChild("RagdollConstraints") then
+        local downedPlayerFound = false
 
-                            continue
+        local playersInGame = workspace:FindFirstChild("Game") and workspace.Game:FindFirstChild("Players")
 
-                        end
+        if playersInGame then
 
-                        
+            for _, v in pairs(playersInGame:GetChildren()) do
 
-                        rootPart.CFrame = v.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+                if v:IsA("Model") and v:GetAttribute("Downed") then
 
-                        ReplicatedStorage.Events.Character.Interact:FireServer("Revive", true, v)
+                    if v:FindFirstChild("RagdollConstraints") then
+
+                        continue
+
+                    end
+
+                    local victimRoot = v:FindFirstChild("HumanoidRootPart")
+
+                    if victimRoot then
+
+                        hrp.CFrame = victimRoot.CFrame + Vector3.new(0, 3, 0)
+
+                        pcall(function()
+
+                            ReplicatedStorage.Events.Character.Interact:FireServer("Revive", true, v)
+
+                        end)
 
                         task.wait(0.5)
 
@@ -4249,13 +4265,11 @@ local function startAutoMoneyFarm()
 
             end
 
-            
+        end
 
-            if not downedPlayerFound then
+        if not downedPlayerFound then
 
-                rootPart.CFrame = securityPart.CFrame + Vector3.new(0, 3, 0)
-
-            end
+            hrp.CFrame = sp.CFrame + Vector3.new(0, 3, 0)
 
         end
 
