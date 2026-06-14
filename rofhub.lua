@@ -197,6 +197,8 @@ local Window = WindUI:CreateWindow({
 
     MaxSize = Vector2.new(1200, 800),
 
+    UIScale = 1.25,
+
     ToggleKey = Enum.KeyCode.RightShift,
 
     Transparent = true,
