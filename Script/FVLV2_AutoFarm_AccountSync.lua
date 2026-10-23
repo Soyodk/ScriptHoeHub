@@ -3055,7 +3055,7 @@ end)
 
 TweenService = game:GetService("TweenService")
 VirtualUser = game:GetService("VirtualUser")
-local obj6, n2, flag46, flag47, func47, func48, func49, func50, func51, func52
+local obj6, n2, flag46, flag47, func47, func48, func49, func50, func51, func52, farmMovementMode
 local func53
 
 do
@@ -3068,6 +3068,7 @@ do
         local value35 = nil
         local connection = nil
         n2 = 23
+        farmMovementMode = "Flutuando"
         local n3 = 0
         local value36 = nil
         flag46 = false
@@ -3435,24 +3436,35 @@ do
 
                                                                         func59(true)
                                                                         local cFrame = obj7.CFrame
-                                                                        local n4 = (num4.Position - obj7.Position).Magnitude / n2
-
-                                                                        if n4 > 15 then
-                                                                                n4 = 3
-                                                                        end
-
-                                                                        if n4 < 0.05 then
-                                                                                n4 = 0.05
-                                                                        end
-
+                                                                        local targetCFrame = CFrame.new(cFrame.X, cFrame.Y - 3.5, cFrame.Z) * CFrame.Angles(1.5707963267948966, 0, 1.5707963267948966)
                                                                         num4.Velocity = Vector3.zero
 
-                                                                        tween = TweenService:Create(num4, TweenInfo.new(n4, Enum.EasingStyle.Linear), {
-                                                                                CFrame = CFrame.new(cFrame.X, cFrame.Y - 3.5, cFrame.Z) * CFrame.Angles(1.5707963267948966, 0, 1.5707963267948966),
-                                                                        })
+                                                                        if farmMovementMode == "Teleportando" then
+                                                                                -- Move diretamente até a moeda, mantendo o modo de voo ativo.
+                                                                                if tween then
+                                                                                        pcall(function() tween:Cancel() end)
+                                                                                        tween = nil
+                                                                                end
+                                                                                num4.CFrame = targetCFrame
+                                                                                num4.Velocity = Vector3.zero
+                                                                        else
+                                                                                local n4 = (num4.Position - obj7.Position).Magnitude / n2
 
-                                                                        tween:Play()
-                                                                        num4.Velocity = Vector3.zero
+                                                                                if n4 > 15 then
+                                                                                        n4 = 3
+                                                                                end
+
+                                                                                if n4 < 0.05 then
+                                                                                        n4 = 0.05
+                                                                                end
+
+                                                                                tween = TweenService:Create(num4, TweenInfo.new(n4, Enum.EasingStyle.Linear), {
+                                                                                        CFrame = targetCFrame,
+                                                                                })
+
+                                                                                tween:Play()
+                                                                                num4.Velocity = Vector3.zero
+                                                                        end
                                                                 else
                                                                         local magnitude = (num4.Position - obj7.Position).Magnitude
 
@@ -9224,6 +9236,21 @@ do
                 end,
         })
 
+        tbl43.farm:Dropdown({
+                Title = "Farm Movement",
+                Flag = "Dropdown_Farm_Movement",
+                Desc = "Flutuando: move suavemente até as moedas. Teleportando: teleporta até cada moeda e mantém o voo ativo.",
+                Multi = false,
+                Value = "Flutuando",
+                Values = { "Flutuando", "Teleportando" },
+                Callback = function(value)
+                        local selected = tostring(type(value) == "table" and (value[1] or value.Value) or value)
+                        if selected == "Flutuando" or selected == "Teleportando" then
+                                farmMovementMode = selected
+                        end
+                end,
+        })
+
         tbl43.farm:Slider({
                 Title = "Farm Speed",
                 Flag = "Slider_Farm_Speed",
@@ -12531,6 +12558,7 @@ list2.perf = {
                 terrain = false,
                 sounds = false,
                 quality = false,
+                meshQuality = false,
                 fpsCounter = false,
         },
         el = {},
@@ -12544,6 +12572,7 @@ list2.perf = {
                 light = nil,
                 terrain = nil,
                 quality = nil,
+                mesh = {},
         },
         animConns = {},
         watchConn = nil,
@@ -12728,6 +12757,15 @@ list2.perf.apply = function(obj)
 
         if list2.perf.on.textures then
                 list2.perf.stripTexture(obj)
+        end
+
+        if list2.perf.on.meshQuality and obj:IsA("MeshPart") then
+                if list2.perf.stash.mesh[obj] == nil then
+                        pcall(function()
+                                list2.perf.stash.mesh[obj] = obj.RenderFidelity
+                                obj.RenderFidelity = Enum.RenderFidelity.Performance
+                        end)
+                end
         end
 
         if list2.perf.on.effects then
@@ -13617,6 +13655,39 @@ list2.perf.el.quality = tbl43.visuals:Toggle({
         Value = false,
         Callback = func112(function(param152)
                 list2.perf.set("quality", param152)
+        end),
+})
+
+list2.perf.features.meshQuality = {
+        sweeps = true,
+        on = function()
+                list2.perf.sweep()
+        end,
+        off = function()
+                local savedMeshes = list2.perf.stash.mesh
+                local meshes, count = list2.perf.keysOf(savedMeshes)
+                for i = 1, count do
+                        local mesh = meshes[i]
+                        local fidelity = savedMeshes[mesh]
+                        if fidelity ~= nil and mesh.Parent then
+                                pcall(function()
+                                        mesh.RenderFidelity = fidelity
+                                end)
+                        end
+                        savedMeshes[mesh] = nil
+                        list2.perf.breathe(i)
+                end
+        end,
+}
+
+list2.perf.el.meshQuality = tbl43.visuals:Toggle({
+        Title = "Simplify 3D Meshes",
+        Flag = "Toggle_Perf_Mesh_Quality",
+        Desc = "Uses performance rendering for mesh parts. Reversible; some objects may look less detailed.",
+        Type = "Toggle",
+        Value = false,
+        Callback = func112(function(value)
+                list2.perf.set("meshQuality", value)
         end),
 })
 
