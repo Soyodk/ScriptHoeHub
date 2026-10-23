@@ -644,311 +644,6 @@ pcall(function()
         end
 end)
 
--- =====================================================================
--- F$VL Account Sync - bots share bag status through a Vercel API.
--- Bots using the same Room on the same Roblox server see each other
--- and the Auto-Reset waits until EVERY bot's bag is Full.
--- =====================================================================
-do
-        local Players = game:GetService("Players")
-        local HttpService = game:GetService("HttpService")
-        local syncPlayer = Players.LocalPlayer
-
-        list2.syncOn = false
-        list2.syncUrl = ""
-        list2.syncRoom = "FVL-1"
-        list2.syncTarget = 0
-        list2.syncTTL = 15
-        list2.syncPeers = {}
-        list2.syncLastOk = 0
-        list2.syncLastErr = nil
-        list2.syncRun = false
-        list2.syncNotifyAt = 0
-        list2.syncWasWaiting = false
-
-        local function syncNotify(icon, title, content)
-                pcall(function()
-                        obj2:Notify({ Title = title, Content = content, Duration = 4, Icon = icon })
-                end)
-        end
-
-        list2.syncNotify = syncNotify
-
-        list2.syncBagCount = function()
-                local ok, result = pcall(function()
-                        local main = syncPlayer:FindFirstChild("PlayerGui")
-                        main = main and main:FindFirstChild("MainGUI")
-
-                        if not main then
-                                return 0
-                        end
-
-                        local container = main:FindFirstChild("Game")
-                        container = container and container:FindFirstChild("CoinBags")
-                        container = container and container:FindFirstChild("Container")
-
-                        if not container then
-                                local lobby = main:FindFirstChild("Lobby")
-                                local dock = lobby and lobby:FindFirstChild("Dock")
-                                local lobbyBags = dock and dock:FindFirstChild("CoinBags")
-                                container = lobbyBags and lobbyBags:FindFirstChild("Container")
-                        end
-
-                        if not container then
-                                return 0
-                        end
-
-                        local chosen = nil
-
-                        for _, child in ipairs(container:GetChildren()) do
-                                if child:IsA("GuiObject") and child:FindFirstChild("CurrencyFrame") then
-                                        if child.Visible then
-                                                chosen = child
-                                                break
-                                        elseif child.Name == "Coin" and not chosen then
-                                                chosen = child
-                                        end
-                                end
-                        end
-
-                        if not chosen then
-                                return 0
-                        end
-
-                        local full = chosen:FindFirstChild("Full")
-
-                        if full and full.Visible then
-                                return 999
-                        end
-
-                        local label = chosen:FindFirstChild("CurrencyFrame")
-                        label = label and label:FindFirstChild("Icon")
-                        label = label and label:FindFirstChild("Coins")
-                        label = label and label.Text
-
-                        if label then
-                                local low = string.lower(label)
-
-                                if low:find("full", 1, true) or low:find("max", 1, true) then
-                                        return 999
-                                end
-                        end
-
-                        return tonumber(label) or 0
-                end)
-
-                if ok then
-                        return tonumber(result) or 0
-                end
-
-                return 0
-        end
-
-        list2.syncIsFull = function()
-                local raw = list2.syncBagCount()
-                local target = tonumber(list2.syncTarget) or 0
-
-                if target > 0 then
-                        return raw >= target
-                end
-
-                return raw >= 999
-        end
-
-        list2.syncOnlinePeers = function()
-                local now = os.clock()
-                local ttl = tonumber(list2.syncTTL) or 15
-                local out = {}
-
-                for name, peer in pairs(list2.syncPeers) do
-                        if name ~= syncPlayer.Name and type(peer) == "table" and (now - (peer.seen or 0)) <= ttl and peer.jobId == game.JobId then
-                                out[#out + 1] = peer
-                        end
-                end
-
-                return out
-        end
-
-        list2.syncHttp = function(payload)
-                local base = tostring(list2.syncUrl or ""):gsub("/+$", "")
-
-                if base == "" then
-                        return false, "no API URL set"
-                end
-
-                local url = base .. "/api/sync"
-                local body = HttpService:JSONEncode(payload)
-                local requestFn = syn and syn.request or request or http_request or http and http.request
-                local ok, decoded = pcall(function()
-                        if requestFn then
-                                local res = requestFn({
-                                        Url = url,
-                                        Method = "POST",
-                                        Headers = { ["Content-Type"] = "application/json" },
-                                        Body = body,
-                                })
-
-                                local raw = type(res) == "table" and (res.Body or res.body) or nil
-                                return HttpService:JSONDecode(tostring(raw or ""))
-                        end
-
-                        return HttpService:JSONDecode(game:HttpPost(url, body, "application/json"))
-                end)
-
-                if ok then
-                        return true, decoded
-                end
-
-                return false, tostring(decoded):sub(1, 120)
-        end
-
-        list2.syncHeartbeat = function()
-                local payload = {
-                        room = tostring(list2.syncRoom or ""),
-                        name = syncPlayer.Name,
-                        jobId = game.JobId,
-                        placeId = game.PlaceId,
-                        coins = list2.syncBagCount(),
-                        full = list2.syncIsFull(),
-                }
-
-                local ok, res = list2.syncHttp(payload)
-
-                if ok and type(res) == "table" and res.ok == true and type(res.bots) == "table" then
-                        list2.syncLastOk = os.clock()
-                        list2.syncLastErr = nil
-
-                        local fresh = {}
-
-                        for _, bot in ipairs(res.bots) do
-                                if type(bot) == "table" and type(bot.name) == "string" and bot.name ~= "" then
-                                        fresh[bot.name] = {
-                                                name = bot.name,
-                                                coins = tonumber(bot.coins) or 0,
-                                                full = bot.full == true,
-                                                jobId = tostring(bot.jobId or ""),
-                                                seen = os.clock(),
-                                        }
-                                end
-                        end
-
-                        list2.syncPeers = fresh
-                else
-                        list2.syncLastErr = (type(res) == "string" and res) or "bad response"
-                end
-
-                return ok, res
-        end
-
-        list2.syncStart = function()
-                if list2.syncRun then
-                        return
-                end
-
-                if tostring(list2.syncUrl or "") == "" then
-                        syncNotify("x", "Account Sync", "Paste your Vercel API URL first!")
-                        return
-                end
-
-                list2.syncRun = true
-
-                task.spawn(function()
-                        while list2.syncRun do
-                                pcall(list2.syncHeartbeat)
-
-                                local waited = 0
-
-                                while list2.syncRun and waited < 2.5 do
-                                        task.wait(0.25)
-                                        waited = waited + 0.25
-                                end
-                        end
-
-                        list2.syncRun = false
-                end)
-        end
-
-        list2.syncStop = function()
-                list2.syncRun = false
-
-                task.spawn(function()
-                        pcall(function()
-                                list2.syncHttp({ room = tostring(list2.syncRoom or ""), name = syncPlayer.Name, leave = true })
-                        end)
-                end)
-        end
-
-        list2.syncGate = function(reason)
-                if not list2.syncOn then
-                        return true
-                end
-
-                local peers = list2.syncOnlinePeers()
-
-                if #peers == 0 then
-                        list2.syncWasWaiting = false
-                        return true
-                end
-
-                local pending = {}
-
-                for _, peer in ipairs(peers) do
-                        if not peer.full then
-                                pending[#pending + 1] = peer.name .. " (" .. tostring(peer.coins) .. ")"
-                        end
-                end
-
-                if #pending == 0 then
-                        if list2.syncWasWaiting then
-                                list2.syncWasWaiting = false
-                                syncNotify("check", "Account Sync", "Everyone is Full - " .. tostring(reason or "reset") .. " going!")
-                        end
-
-                        return true
-                end
-
-                list2.syncWasWaiting = true
-                local now = os.clock()
-
-                if now - (list2.syncNotifyAt or 0) > 8 then
-                        list2.syncNotifyAt = now
-                        syncNotify("users", "Account Sync", "Waiting for " .. #pending .. " bot(s) before resetting: " .. table.concat(pending, ", "))
-                end
-
-                return false
-        end
-
-        list2.syncStatusText = function()
-                if not list2.syncOn then
-                        return "Status: Off\nTurn Account Sync on to start sharing your bag with the room."
-                end
-
-                local lines = {}
-
-                if list2.syncLastErr then
-                        table.insert(lines, "API: error - " .. list2.syncLastErr)
-                elseif os.clock() - list2.syncLastOk > 10 then
-                        table.insert(lines, "API: connecting...")
-                else
-                        table.insert(lines, "API: connected")
-                end
-
-                table.insert(lines, "You: " .. syncPlayer.Name .. " - " .. tostring(list2.syncBagCount()) .. (list2.syncIsFull() and " [FULL]" or ""))
-
-                local peers = list2.syncOnlinePeers()
-
-                if #peers == 0 then
-                        table.insert(lines, "Bots in this server: none")
-                else
-                        for _, peer in ipairs(peers) do
-                                table.insert(lines, "Bot: " .. peer.name .. " - " .. tostring(peer.coins) .. (peer.full and " [FULL]" or " [farming]"))
-                        end
-                end
-
-                return table.concat(lines, "\n")
-        end
-end
-
 list2.sfxId = {
         error = 131039887376992,
         gun = 131390520971848,
@@ -3710,7 +3405,7 @@ do
                                         if func56() > 0 then
                                                 local result5 = func57()
 
-                                                if (localPlayer:GetAttribute("Elite") and 50 or 40) <= result5 then
+                                                if 50 <= result5 then
                                                         func62()
                                                         list2.finishFling()
 
@@ -5535,7 +5230,7 @@ do
                                 task.wait(1)
 
                                 pcall(function()
-                                        if func57() >= 999 and (type(list2.syncGate) ~= "function" or list2.syncGate("Auto-Reset")) then
+                                        if func57() >= 999 then
                                                 local humanoid = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
 
                                                 if humanoid then
@@ -8557,14 +8252,6 @@ tbl43.farm = obj3:Tab({
         Border = true,
 })
 
-tbl43.sync = obj3:Tab({
-        Title = "Account Sync",
-        Icon = "lucide:users",
-        IconColor = ICON.green,
-        IconShape = "Square",
-        Border = true,
-})
-
 tbl43.player = FVL_deadTab()
 
 tbl43.visuals = obj3:Tab({
@@ -9542,9 +9229,9 @@ do
                 Flag = "Slider_Farm_Speed",
                 Desc = "Meters per second",
                 Step = 1,
-                Value = { Min = 5, Max = 25, Default = 25 },
+                Value = { Min = 5, Max = 60, Default = 25 },
                 Callback = function(value)
-                        n2 = value >= 25 and 23 or value
+                        n2 = math.clamp(tonumber(value) or 25, 5, 60)
                 end,
         })
 
@@ -9709,118 +9396,6 @@ do
         func52()
         flag46 = true
         func50()
-        tbl43.sync:Section({ Title = "Account Sync" })
-
-        list2.el.syncToggle = tbl43.sync:Toggle({
-                Title = "Account Sync",
-                Flag = "Toggle_Account_Sync",
-                Desc = "Bots on the same Room and the same Roblox server share their bag. The Auto-Reset holds until every bot is Full, then everyone resets together.",
-                Type = "Toggle",
-                Value = false,
-                Callback = function(value)
-                        list2.syncOn = value
-
-                        if value then
-                                list2.syncStart()
-                                list2.syncNotify("check", "Account Sync On!", "Sharing your bag with the room. Same Room + same server = synced.")
-                        else
-                                list2.syncStop()
-                                list2.syncNotify("power-off", "Account Sync Off!", "You stopped sharing. Auto-Reset goes back to firing on its own.")
-                        end
-                end,
-        })
-
-        tbl43.sync:Input({
-                Title = "Vercel API URL",
-                Flag = "Input_Sync_Api_Url",
-                Desc = "Your deployed sync API, like https://fvl-sync.vercel.app (no /api/sync, no trailing slash).",
-                Placeholder = "https://your-app.vercel.app",
-                Callback = function(value)
-                        list2.syncUrl = tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", ""):gsub("/+$", "")
-                end,
-        })
-
-        tbl43.sync:Input({
-                Title = "Room",
-                Flag = "Input_Sync_Room",
-                Desc = "Bots only sync with bots using the exact same room. Use something unique to you.",
-                Placeholder = "FVL-1",
-                Callback = function(value)
-                        local room = tostring(value or ""):gsub("^%s+", ""):gsub("%s+$", "")
-
-                        if room == "" then
-                                room = "FVL-1"
-                        end
-
-                        list2.syncRoom = room
-                end,
-        })
-
-        tbl43.sync:Slider({
-                Title = "Custom Full Target",
-                Flag = "Slider_Sync_Target",
-                Desc = "0 uses the game's own FULL bag label. Any other number counts as Full at that amount (like 50).",
-                Step = 1,
-                Value = { Min = 0, Max = 999, Default = 0 },
-                Callback = function(value)
-                        list2.syncTarget = tonumber(value) or 0
-                end,
-        })
-
-        tbl43.sync:Slider({
-                Title = "Bot Timeout",
-                Flag = "Slider_Sync_TTL",
-                Desc = "Seconds without news before a bot stops counting. Protects you if a bot crashes.",
-                Step = 1,
-                Value = { Min = 6, Max = 60, Default = 15 },
-                Callback = function(value)
-                        list2.syncTTL = tonumber(value) or 15
-                end,
-        })
-
-        tbl43.sync:Section({ Title = "Live Status" })
-
-        list2.el.syncStatus = tbl43.sync:Paragraph({
-                Title = "Bots",
-                Desc = "Status: Off",
-        })
-
-        tbl43.sync:Button({
-                Title = "Test Connection",
-                Desc = "Sends one status update and tells you who is in the room right now.",
-                Callback = function()
-                        task.spawn(function()
-                                local ok = pcall(list2.syncHeartbeat)
-
-                                if ok and not list2.syncLastErr then
-                                        local here = 0
-
-                                        for _, peer in ipairs(list2.syncOnlinePeers()) do
-                                                here = here + 1
-                                        end
-
-                                        list2.syncNotify("check", "Account Sync", "Connected! " .. tostring(here) .. " other bot(s) in this server.")
-                                else
-                                        list2.syncNotify("x", "Account Sync", "Failed: " .. tostring(list2.syncLastErr or "request failed"))
-                                end
-                        end)
-                end,
-        })
-
-        task.spawn(function()
-                while list2.current() do
-                        pcall(function()
-                                local paragraph = list2.el.syncStatus
-
-                                if paragraph and type(paragraph.SetDesc) == "function" then
-                                        paragraph:SetDesc(list2.syncStatusText())
-                                end
-                        end)
-
-                        task.wait(1)
-                end
-        end)
-
         tbl43.farm:Section({ Title = "Discord Webhook" })
 
         list2.el.whUrl = tbl43.farm:Input({
@@ -14889,12 +14464,6 @@ local function fvlV2Cleanup()
         end
 
         list2.stopFarmHopWatch()
-        pcall(function()
-                if list2.syncStop then
-                        list2.syncStop()
-                end
-        end)
-
         list2.flingAllRunning = false
         num16.enabled = false
         num16.stop()
