@@ -3449,6 +3449,8 @@ do
                                                                         value35 = obj7
                                                                         flag50 = true
                                                                         list2.farmTargetTime = tick()
+                                                                        -- FVL FIX: zera o detector de moeda travada para o novo alvo
+                                                                        list2.farmDistCoin = nil
 
                                                                         if tween then
                                                                                 tween:Cancel()
@@ -3457,7 +3459,7 @@ do
 
                                                                         func59(true)
                                                                         local cFrame = obj7.CFrame
-                                                                        local targetCFrame = CFrame.new(cFrame.X, cFrame.Y - 3.5, cFrame.Z) * CFrame.Angles(1.5707963267948966, 0, 1.5707963267948966)
+                                                                        local targetCFrame = CFrame.new(cFrame.X, cFrame.Y - 2.5, cFrame.Z) * CFrame.Angles(1.5707963267948966, 0, 1.5707963267948966)
                                                                         num4.Velocity = Vector3.zero
 
                                                                         if farmMovementMode == "Teleportando" then
@@ -3471,8 +3473,9 @@ do
                                                                         else
                                                                                 local n4 = (num4.Position - obj7.Position).Magnitude / n2
 
-                                                                                if n4 > 15 then
-                                                                                        n4 = 3
+                                                                                -- FVL FIX: viagem longa dura no maximo 1.5s (antes podia levar de 3 a 15s)
+                                                                                if n4 > 1.5 then
+                                                                                        n4 = 1.5
                                                                                 end
 
                                                                                 if n4 < 0.05 then
@@ -3490,7 +3493,7 @@ do
                                                                         local magnitude = (num4.Position - obj7.Position).Magnitude
 
                                                                         if magnitude <= 6 and not obj7:GetAttribute("Collected") then
-                                                                                obj7.CFrame = CFrame.new(num4.Position + Vector3.new(math.random(-80, 80) / 100, math.random(-50, 300) / 100, math.random(-80, 80) / 100))
+                                                                                obj7.CFrame = CFrame.new(num4.Position + Vector3.new(math.random(-80, 80) / 100, math.random(-50, 140) / 100, math.random(-80, 80) / 100))
 
                                                                                 if (obj7.Position - num4.Position).Magnitude > 0.1 then
                                                                                         num4.CFrame = num4.CFrame * CFrame.new(0, math.random(-20, 20) / 100, math.random(-20, 20) / 100)
@@ -3501,9 +3504,9 @@ do
                                                                                         n3 = tick()
                                                                                 end
 
-                                                                                -- FVL FIX: timeout de 0.8s (era 2s) e registra a falha:
+                                                                                -- FVL FIX: timeout de 0.6s e registra a falha:
                                                                                 -- moeda problematica e largada rapido, sem ficar preso nela
-                                                                                if tick() - n3 > 0.8 then
+                                                                                if tick() - n3 > 0.6 then
                                                                                         list2.coinFailed(obj7)
                                                                                         value36 = nil
                                                                                         n3 = 0
@@ -3511,17 +3514,36 @@ do
                                                                                 end
                                                                         elseif magnitude > 6 then
                                                                                 local farmTargetTime = list2.farmTargetTime
+                                                                                local stuckNow = false
 
-                                                                                if tick() - farmTargetTime > 4 then
+                                                                                -- FVL FIX: moeda travada (distancia nao muda por 0.7s) e descartada na hora,
+                                                                                -- sem esperar o timeout total; cobre parede/obstaculo no caminho do tween
+                                                                                if list2.farmDistCoin ~= obj7 then
+                                                                                        list2.farmDistCoin = obj7
+                                                                                        list2.farmLastDist = magnitude
+                                                                                        list2.farmDistTime = tick()
+                                                                                elseif math.abs(magnitude - (list2.farmLastDist or magnitude)) > 0.5 then
+                                                                                        list2.farmLastDist = magnitude
+                                                                                        list2.farmDistTime = tick()
+                                                                                elseif tick() - (list2.farmDistTime or farmTargetTime) > 0.7 then
+                                                                                        stuckNow = true
+                                                                                end
+
+                                                                                if stuckNow or tick() - farmTargetTime > 3 then
+                                                                                        if stuckNow and tween then
+                                                                                                pcall(function() tween:Cancel() end)
+                                                                                                tween = nil
+                                                                                        end
+
                                                                                         list2.coinFailed(obj7)
                                                                                         value35 = nil
                                                                                         value36 = nil
                                                                                         n3 = 0
                                                                                 elseif not tween or tween.PlaybackState ~= Enum.PlaybackState.Playing then
                                                                                         -- FVL FIX: o tween terminou e a moeda ainda nao foi coletada:
-                                                                                        -- recria o movimento na hora em vez de ficar parado ate o timeout de 4s
+                                                                                        -- recria o movimento na hora em vez de ficar parado ate o timeout de 3s
                                                                                         local cFrame2 = obj7.CFrame
-                                                                                        local targetCFrame2 = CFrame.new(cFrame2.X, cFrame2.Y - 3.5, cFrame2.Z) * CFrame.Angles(1.5707963267948966, 0, 1.5707963267948966)
+                                                                                        local targetCFrame2 = CFrame.new(cFrame2.X, cFrame2.Y - 2.5, cFrame2.Z) * CFrame.Angles(1.5707963267948966, 0, 1.5707963267948966)
 
                                                                                         if farmMovementMode == "Teleportando" then
                                                                                                 num4.CFrame = targetCFrame2
@@ -3529,8 +3551,9 @@ do
                                                                                         else
                                                                                                 local n5 = (num4.Position - obj7.Position).Magnitude / n2
 
-                                                                                                if n5 > 15 then
-                                                                                                        n5 = 3
+                                                                                                -- FVL FIX: viagem longa dura no maximo 1.5s (antes podia levar de 3 a 15s)
+                                                                                                if n5 > 1.5 then
+                                                                                                        n5 = 1.5
                                                                                                 end
 
                                                                                                 if n5 < 0.05 then
