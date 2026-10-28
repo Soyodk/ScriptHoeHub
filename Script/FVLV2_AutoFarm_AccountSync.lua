@@ -4238,6 +4238,25 @@ do
         list2.whLastErr = nil
         list2.whBreak = false
 
+        -- FVL FIX: inbox do menu - as linhas sao alimentadas pelo pump do webhook
+        -- e o Paragraph da aba Webhook & Inbox mostra tudo ao vivo
+        list2.inboxLines = {}
+
+        list2.inboxAdd = function(line)
+                pcall(function()
+                        table.insert(list2.inboxLines, 1, "[" .. (os.date and os.date("%H:%M:%S") or "?") .. "] " .. tostring(line))
+
+                        if #list2.inboxLines > 15 then
+                                table.remove(list2.inboxLines)
+                        end
+
+                        if list2.inboxPar and list2.inboxPar.SetDesc then
+                                list2.inboxPar:SetDesc(table.concat(list2.inboxLines, "\n"))
+                        end
+                end)
+        end
+
+
         list2.whSend = function(param37)
                 local request_ = syn and syn.request or request or http_request or http and http.request
                 if not request_ then
@@ -4293,6 +4312,10 @@ do
                                         value85.ok = true
                                         value85.code = str14
                                         value85.done = true
+
+                                        if list2.inboxAdd then
+                                                list2.inboxAdd("Sent (" .. str14 .. "): " .. tostring(value85.title or "message"))
+                                        end
                                         task.wait(0.35)
                                 elseif value87 then
                                         task.wait(value87)
@@ -4303,6 +4326,10 @@ do
                                         value85.ok = false
                                         value85.code = str14
                                         value85.done = true
+
+                                        if list2.inboxAdd then
+                                                list2.inboxAdd("Failed (" .. tostring(str14) .. "): " .. tostring(value85.title or "message"))
+                                        end
 
                                         if str14 == "401" or str14 == "403" or str14 == "404" then
                                                 list2.whBreak = true
@@ -4382,7 +4409,7 @@ do
                 if not ok then
                         return false, "could not encode the payload"
                 end
-                local tbl28 = { body = result, done = false }
+                local tbl28 = { body = result, done = false, title = obj.title }
 
                 if #list2.whQ >= 40 then
                         local value88 = table.remove(list2.whQ, 1)
@@ -4390,6 +4417,10 @@ do
                         value88.ok = false
                         value88.code = "dropped"
                         list2.whDropped = list2.whDropped + 1
+
+                        if list2.inboxAdd then
+                                list2.inboxAdd("Dropped (queue full): " .. tostring(value88.title or "message"))
+                        end
                 end
 
                 list2.whQ[#list2.whQ + 1] = tbl28
@@ -8313,6 +8344,15 @@ tbl43.farm = obj3:Tab({
         Border = true,
 })
 
+-- FVL FIX: nova aba dedicada ao Discord Webhook e ao inbox de eventos
+tbl43.webhook = obj3:Tab({
+        Title = "Webhook & Inbox",
+        Icon = "lucide:webhook",
+        IconColor = ICON.tile,
+        IconShape = "Square",
+        Border = true,
+})
+
 tbl43.player = FVL_deadTab()
 
 tbl43.visuals = obj3:Tab({
@@ -9472,9 +9512,9 @@ do
         func52()
         flag46 = true
         func50()
-        tbl43.farm:Section({ Title = "Discord Webhook" })
+        tbl43.webhook:Section({ Title = "Discord Webhook" })
 
-        list2.el.whUrl = tbl43.farm:Input({
+        list2.el.whUrl = tbl43.webhook:Input({
                 Title = "Webhook URL",
                 Flag = "Input_Discord_Webhook",
                 Desc = "Paste a Discord webhook and logging starts. Logs box opens, shell claims, round coins and every currency on the account. Empty the box to stop.",
@@ -9492,7 +9532,7 @@ do
                 end,
         })
 
-        list2.el.whOn = tbl43.farm:Toggle({
+        list2.el.whOn = tbl43.webhook:Toggle({
                 Title = "Start Sender",
                 Flag = "Toggle_Discord_Sender",
                 Desc = "Starts posting to the webhook above. Logs box opens, shell claims, round payouts and the full account wallet.",
@@ -9519,6 +9559,30 @@ do
                                         list2.setToggle(list2.el.whOn, false)
                                 end
                         end)
+                end,
+        })
+
+        tbl43.webhook:Section({ Title = "Inbox" })
+
+        -- FVL FIX: feed ao vivo dentro do menu; lista as ultimas 15 mensagens
+        -- do logger (logger started, settings, box, shells, round) e o resultado
+        list2.inboxPar = tbl43.webhook:Paragraph({
+                Title = "Live Feed",
+                Desc = "No activity yet. Every webhook message shows up here with its send result.",
+        })
+
+        tbl43.webhook:Button({
+                Title = "Clear Inbox",
+                Desc = "Wipes the inbox feed.",
+                Icon = "lucide:eraser",
+                Callback = function()
+                        list2.inboxLines = {}
+
+                        if list2.inboxPar and list2.inboxPar.SetDesc then
+                                pcall(function()
+                                        list2.inboxPar:SetDesc("Inbox cleared.")
+                                end)
+                        end
                 end,
         })
 
@@ -9571,57 +9635,6 @@ do
                         end
                 end
         end
-
-        tbl43.farm:Section({ Title = "Server" })
-
-        tbl43.farm:Button({
-                Title = "Server Hop",
-                Desc = "Quickly join another server",
-                Icon = "lucide:arrow-right-left",
-                Callback = function()
-                        task.spawn(func32)
-                end,
-        })
-
-        tbl43.farm:Button({
-                Title = "Smallest Server",
-                Desc = "Join the server with the fewest players",
-                Icon = "lucide:users",
-                Callback = function()
-                        task.spawn(func33)
-                end,
-        })
-
-        tbl43.farm:Section({ Title = "Script" })
-
-        tbl43.farm:Button({
-                Title = "Save Config",
-                Desc = "Saves everything right now. Your settings also auto-save every few seconds.",
-                Icon = "lucide:save",
-                Callback = function()
-                        if list2.saveNow then
-                                list2.saveNow()
-                        end
-
-                        obj2:Notify({
-                                Title = "Config Saved!",
-                                Content = "All settings were saved to your config file.",
-                                Duration = 2,
-                                Icon = "check",
-                        })
-                end,
-        })
-
-        tbl43.farm:Button({
-                Title = "Unload F$VL",
-                Desc = "Tears everything down and stops the script",
-                Icon = "lucide:power",
-                Callback = function()
-                        pcall(function()
-                                obj3:Destroy()
-                        end)
-                end,
-        })
 
         func120(ICON.mono)
 
@@ -14549,10 +14562,46 @@ tbl43.settings:Button({
         end,
 })
 
+tbl43.settings:Section({ Title = "Script" })
+
+-- FVL FIX: "Save Now" (ex botao "Save Config") e "Unload F$VL" vieram da aba
+-- Autofarm (home) para a aba de config. A secao "Server" duplicada da home foi
+-- removida porque ja existia identica aqui na aba Settings & Configs.
+tbl43.settings:Button({
+        Title = "Save Now",
+        Desc = "Saves everything right now. Your settings also auto-save every few seconds.",
+        Icon = "lucide:save",
+        Callback = function()
+                if list2.saveNow then
+                        list2.saveNow()
+                end
+
+                obj2:Notify({
+                        Title = "Config Saved!",
+                        Content = "All settings were saved to your config file.",
+                        Duration = 2,
+                        Icon = "check",
+                })
+        end,
+})
+
+tbl43.settings:Button({
+        Title = "Unload F$VL",
+        Desc = "Tears everything down and stops the script",
+        Icon = "lucide:power",
+        Callback = function()
+                pcall(function()
+                        obj3:Destroy()
+                end)
+        end,
+})
+
 func118("Load Config", Color3.fromHex("#86EFAC"))
 func118("Save Config", Color3.fromHex("#FDE68A"))
 func118("Delete Config", Color3.fromHex("#FCA5A5"))
 func118("Delete Autosave Config", Color3.fromHex("#FCA5A5"))
+func118("Save Now", Color3.fromHex("#FDE68A"))
+func118("Unload F$VL", Color3.fromHex("#FCA5A5"))
 
 local function fvlV2Cleanup()
         func22()
