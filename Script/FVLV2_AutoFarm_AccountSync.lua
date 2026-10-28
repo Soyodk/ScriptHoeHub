@@ -3344,38 +3344,59 @@ do
                 end
                 flag48 = true
                 func61()
+                -- FVL FIX: checagem de vida movida para esta task paralela (1x por segundo):
+                -- antes o InvokeServer rodava a cada tick DENTRO do loop do farm e congelava tudo
+                local probeGen = (list2.farmProbeGen or 0) + 1
+                list2.farmProbeGen = probeGen
+
+                task.spawn(function()
+                        while flag48 and list2.farmProbeGen == probeGen do
+                                pcall(function()
+                                        if not localPlayer.Character then
+                                                flag49 = false
+                                                return
+                                        end
+
+                                        local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+                                        local extras = remotes and remotes:FindFirstChild("Extras")
+                                        local getPlayerData = extras and extras:FindFirstChild("GetPlayerData")
+
+                                        if getPlayerData then
+                                                local ok, result = pcall(function()
+                                                        return getPlayerData:InvokeServer()
+                                                end)
+
+                                                if ok and result then
+                                                        local entry1 = result[localPlayer.Name]
+
+                                                        if entry1 then
+                                                                entry1 = not entry1.Dead and not entry1.Killed
+                                                        end
+
+                                                        flag49 = entry1
+                                                end
+                                        end
+                                end)
+
+                                task.wait(1)
+                        end
+                end)
+
 
                 task.spawn(function()
                         while flag48 do
-                                task.wait(0.1)
+                                -- FVL FIX: tick de 0.05s (era 0.1s) -- re-alveia a proxima moeda na hora
+                                task.wait(0.05)
 
                                 pcall(function()
                                         if not flag48 then
                                                 return
                                         end
 
+                                        -- FVL FIX: o estado de vida (flag49) agora vem da task paralela acima (1x/s);
+                                        -- o InvokeServer sincrono aqui congelava o farm inteiro sob lag
                                         if not localPlayer.Character then
                                                 flag49 = false
-                                        else
-                                                local remotes = ReplicatedStorage:FindFirstChild("Remotes")
-                                                local extras = remotes and remotes:FindFirstChild("Extras")
-                                                local getPlayerData = extras and extras:FindFirstChild("GetPlayerData")
-
-                                                if getPlayerData then
-                                                        local ok, result = pcall(function()
-                                                                return getPlayerData:InvokeServer()
-                                                        end)
-
-                                                        if ok and result then
-                                                                local entry1 = result[localPlayer.Name]
-
-                                                                if entry1 then
-                                                                        entry1 = not entry1.Dead and not entry1.Killed
-                                                                end
-
-                                                                flag49 = entry1
-                                                        end
-                                                end
                                         end
 
                                         local value59 = next
@@ -3480,7 +3501,10 @@ do
                                                                                         n3 = tick()
                                                                                 end
 
-                                                                                if tick() - n3 > 2 then
+                                                                                -- FVL FIX: timeout de 0.8s (era 2s) e registra a falha:
+                                                                                -- moeda problematica e largada rapido, sem ficar preso nela
+                                                                                if tick() - n3 > 0.8 then
+                                                                                        list2.coinFailed(obj7)
                                                                                         value36 = nil
                                                                                         n3 = 0
                                                                                         value35 = nil
@@ -3493,6 +3517,31 @@ do
                                                                                         value35 = nil
                                                                                         value36 = nil
                                                                                         n3 = 0
+                                                                                elseif not tween or tween.PlaybackState ~= Enum.PlaybackState.Playing then
+                                                                                        -- FVL FIX: o tween terminou e a moeda ainda nao foi coletada:
+                                                                                        -- recria o movimento na hora em vez de ficar parado ate o timeout de 4s
+                                                                                        local cFrame2 = obj7.CFrame
+                                                                                        local targetCFrame2 = CFrame.new(cFrame2.X, cFrame2.Y - 3.5, cFrame2.Z) * CFrame.Angles(1.5707963267948966, 0, 1.5707963267948966)
+
+                                                                                        if farmMovementMode == "Teleportando" then
+                                                                                                num4.CFrame = targetCFrame2
+                                                                                                num4.Velocity = Vector3.zero
+                                                                                        else
+                                                                                                local n5 = (num4.Position - obj7.Position).Magnitude / n2
+
+                                                                                                if n5 > 15 then
+                                                                                                        n5 = 3
+                                                                                                end
+
+                                                                                                if n5 < 0.05 then
+                                                                                                        n5 = 0.05
+                                                                                                end
+
+                                                                                                tween = TweenService:Create(num4, TweenInfo.new(n5, Enum.EasingStyle.Linear), {
+                                                                                                        CFrame = targetCFrame2,
+                                                                                                })
+                                                                                                tween:Play()
+                                                                                        end
                                                                                 end
                                                                         end
                                                                 end
